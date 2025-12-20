@@ -1,0 +1,226 @@
+<template>
+  <div>
+    <div class="d-flex align-center mb-6">
+      <v-avatar color="primary" variant="tonal" class="mr-4" rounded>
+        <v-icon icon="mdi-history"></v-icon>
+      </v-avatar>
+      <div>
+        <h2 class="text-h5 font-weight-bold">系统日志中心</h2>
+        <div class="text-caption text-grey">查看所有任务的运行记录</div>
+      </div>
+      <v-spacer></v-spacer>
+      <v-btn 
+        color="error" 
+        variant="tonal" 
+        prepend-icon="mdi-delete-sweep" 
+        @click="clearConfirmDialog = true"
+        :disabled="loading || history.length === 0"
+      >
+        清空所有记录
+      </v-btn>
+    </div>
+
+    <v-card :loading="loading" class="border-glow">
+      <v-data-table
+        :headers="headers"
+        :items="history"
+        :loading="loading"
+        hover
+        class="bg-surface"
+      >
+        <template v-slot:item.status="{ item }">
+          <v-chip
+            :color="getStatusColor(item.status)"
+            size="small"
+            variant="flat"
+            class="font-weight-bold"
+          >
+            {{ getStatusText(item.status) }}
+          </v-chip>
+        </template>
+        
+        <template v-slot:item.start_time="{ item }">
+          <span class="text-body-2">{{ formatDate(item.start_time) }}</span>
+        </template>
+
+        <template v-slot:item.remark="{ item }">
+          <span class="text-caption text-grey italic">{{ item.remark || '-' }}</span>
+        </template>
+        
+        <template v-slot:item.duration="{ item }">
+          <span class="text-caption font-weight-mono text-primary">{{ calculateDuration(item.start_time, item.end_time) }}</span>
+        </template>
+        
+        <template v-slot:item.actions="{ item }">
+          <v-btn size="small" variant="tonal" color="primary" @click="showLog(item)" prepend-icon="mdi-text-box-outline">
+            查看详情
+          </v-btn>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- Unified Log Detail Dialog -->
+    <v-dialog v-model="logDialog" max-width="900" scrollable>
+      <v-card color="background" class="border-glow shadow-24">
+        <v-card-title class="d-flex justify-space-between align-center pa-4 bg-black border-b">
+          <span class="text-subtitle-1 font-weight-bold text-white">
+            <v-icon icon="mdi-console" class="mr-2" color="primary"></v-icon>终端日志详情
+          </span>
+          <v-btn icon="mdi-close" variant="text" size="small" color="grey" @click="logDialog = false"></v-btn>
+        </v-card-title>
+        <v-card-text class="pa-0 bg-black">
+           <div class="pa-6 font-weight-mono text-body-2 log-container">
+              <div v-for="(line, i) in formattedLogs" :key="i" :class="getLineClass(line)">
+                {{ line }}
+              </div>
+           </div>
+        </v-card-text>
+        <v-card-actions class="bg-black pa-4 border-t">
+          <v-btn variant="text" color="grey" size="small" prepend-icon="mdi-content-copy" @click="copyLog">复制全文</v-btn>
+          <v-spacer></v-spacer>
+          <v-btn variant="flat" color="primary" @click="logDialog = false" class="px-6">关闭日志</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Clear Confirmation -->
+    <v-dialog v-model="clearConfirmDialog" max-width="400">
+      <v-card color="surface" class="border-glow">
+        <v-card-title class="text-h6 font-weight-bold pa-4">确认清空？</v-card-title>
+        <v-card-text class="pa-4 pt-0 text-grey-lighten-1">
+          这将永久删除系统内的所有备份和还原日志记录。<br>
+          <span class="text-warning text-caption">注意：实际的备份文件不会被删除。</span>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn variant="text" color="grey" @click="clearConfirmDialog = false">取消</v-btn>
+          <v-btn variant="flat" color="error" @click="executeClearAll" :loading="clearing">确定清空</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+
+const history = ref([])
+const loading = ref(false)
+const logDialog = ref(false)
+const selectedLog = ref('')
+
+// Computed logs for coloring
+const formattedLogs = computed(() => selectedLog.value.split('\n'))
+
+const getLineClass = (line) => {
+  if (line.includes('[INFO]')) return 'log-info'
+  if (line.includes('[ADD]') || line.includes('[SYNC]') || line.includes('[PACK]') || line.includes('[UNPACK]')) return 'log-add'
+  if (line.includes('[SKIP]')) return 'log-skip'
+  if (line.includes('[WARN]')) return 'log-warn'
+  if (line.includes('[ERROR]') || line.includes('!!!')) return 'log-error'
+  if (line.startsWith('🚀') || line.startsWith('♻️') || line.startsWith('==')) return 'log-header'
+  return 'log-default'
+}
+
+const clearConfirmDialog = ref(false)
+const clearing = ref(false)
+
+const headers = [
+  { title: '状态', key: 'status', align: 'start' },
+  { title: '项目ID', key: 'project_id', align: 'start' },
+  { title: '备注', key: 'remark', align: 'start' },
+  { title: '文件名', key: 'file_name', align: 'start' },
+  { title: '开始时间', key: 'start_time', align: 'start' },
+  { title: '耗时', key: 'duration', align: 'start' },
+  { title: '操作', key: 'actions', align: 'end', sortable: false },
+]
+
+const fetchHistory = async () => {
+  loading.value = true
+  try {
+    const res = await axios.get('/api/history/')
+    history.value = res.data
+  } catch (err) {
+    console.error(err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const getStatusColor = (status) => {
+  if (status === 'success') return 'success'
+  if (status === 'failed') return 'error'
+  return 'info'
+}
+
+const getStatusText = (status) => {
+  const map = { 'success': '成功', 'failed': '失败', 'running': '处理中' }
+  return map[status] || status
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  })
+}
+
+const calculateDuration = (start, end) => {
+  if (!start || !end) return '-'
+  const diff = new Date(end) - new Date(start)
+  const seconds = Math.floor(diff / 1000)
+  if (seconds < 60) return `${seconds}秒`
+  return `${Math.floor(seconds / 60)}分 ${seconds % 60}秒`
+}
+
+const showLog = (record) => {
+  selectedLog.value = record.log_message || '无日志记录'
+  logDialog.value = true
+}
+
+const copyLog = () => {
+  navigator.clipboard.writeText(selectedLog.value)
+  alert("日志已复制到剪贴板")
+}
+
+const executeClearAll = async () => {
+  clearing.value = true
+  try {
+    await axios.delete('/api/history/')
+    clearConfirmDialog.value = false
+    fetchHistory()
+  } catch (err) {
+    console.error(err)
+  } finally {
+    clearing.value = false
+  }
+}
+
+onMounted(() => {
+  fetchHistory()
+})
+</script>
+
+<style scoped>
+.font-weight-mono { font-family: 'Fira Code', 'Roboto Mono', monospace; }
+.border-glow { border: 1px solid rgba(255,255,255,0.08); }
+.border-b { border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
+.border-t { border-top: 1px solid rgba(255,255,255,0.08) !important; }
+.shadow-24 { box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5) !important; }
+
+.log-container {
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* Unified Log Colors */
+.log-default { color: #94a3b8; }
+.log-info { color: #38bdf8; }
+.log-add { color: #4ade80; }
+.log-skip { color: #fbbf24; }
+.log-warn { color: #fb923c; }
+.log-error { color: #f87171; }
+.log-header { color: #c084fc; font-weight: bold; }
+</style>

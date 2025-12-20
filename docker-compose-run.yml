@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backup-app:
+    image: stage-backup:latest
+    container_name: stage_backup_prod
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      # 所有的持久化数据存储位置
+      - ./data:/data
+      # 映射您需要备份的实际宿主机路径
+      - /vol1/1000/NVME:/NVME
+    environment:
+      - TZ=Asia/Shanghai
+      - DEBUG=false
+    # 如果需要增加更多挂载点，可以继续在下方添加
+    # - /path/to/another/data:/backup_source_2

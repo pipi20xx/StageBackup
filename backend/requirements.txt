@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+sqlalchemy
+apscheduler
+tenacity
+pydantic
+apprise
+python-multipart
+cryptography

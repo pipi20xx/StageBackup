@@ -1,0 +1,30 @@
+# 忽略本地持久化数据
+data/
+*.db
+*.db-journal
+settings.json
+
+# 忽略依赖与构建产物
+**/node_modules/
+**/dist/
+**/build/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略开发环境配置与日志
+.env
+*.log
+.vscode/
+.idea/
+.DS_Store
+
+# 忽略 Git 仓库
+.git/
+.gitignore
+
+# 忽略构建脚本与文档
+README_DEV.md
+docker-compose.yml
+666/

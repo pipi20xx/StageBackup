@@ -1,0 +1,40 @@
+# --- 数据库与持久化数据 (严禁上传) ---
+data/
+*.db
+*.db-journal
+settings.json
+
+# --- 后端 (Python) ---
+backend/app/__pycache__/
+backend/app/**/*.pyc
+backend/app/**/*.pyo
+backend/app/**/*.pyd
+.pytest_cache/
+.venv/
+env/
+venv/
+.env
+
+# --- 前端 (Node/Vue) ---
+frontend/node_modules/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+.eslintcache
+
+# --- IDE 与系统文件 ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- 临时文件与日志 ---
+*.log
+/tmp/
+backend/app/cache/
+*.list
+
+# --- 其他 ---
+666/
+test_settings.json
