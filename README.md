@@ -35,13 +35,34 @@
 ## 🚀 快速启动
 
 ### 方式一：直接运行（推荐）
-如果您已经拥有构建好的镜像：
+如果您已经拥有构建好的镜像，可以直接使用以下 `docker-compose.yml` 配置：
 
-1. 下载 `docker-compose-run.yml`。
-2. 执行启动命令：
-   ```bash
-   docker-compose -f docker-compose-run.yml up -d
-   ```
+```yaml
+services:
+  backup-app:
+    image: pipi20xx/stage-backup:latest
+    container_name: stage_backup_prod
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      # 所有的持久化数据存储位置
+      - ./data:/data
+      # 映射您需要备份的实际宿主机路径
+      - /vol1/1000/NVME:/NVME
+      # 映射您需要备份的实际宿主机路径 比如挂载到本地的CD2
+      - /vol1/1000/NVME/docker2/clouddrive2-19798/medata:/medata:rslave        
+    environment:
+      - TZ=Asia/Shanghai
+      - DEBUG=false
+    # 如果需要增加更多挂载点，可以继续在下方添加
+    # - /path/to/another/data:/backup_source_2
+```
+
+执行启动命令：
+```bash
+docker-compose up -d
+```
 
 ### 方式二：自行构建
 1. 克隆代码：
