@@ -1,8 +1,8 @@
-version: '3.8'
+
 
 services:
   backup-app:
-    image: stage-backup:latest
+    image: pipi20xx/stage-backup:latest
     container_name: stage_backup_prod
     restart: unless-stopped
     ports:
@@ -12,6 +12,8 @@ services:
       - ./data:/data
       # 映射您需要备份的实际宿主机路径
       - /vol1/1000/NVME:/NVME
+      # 映射您需要备份的实际宿主机路径 比如挂载到本地的CD2
+      - /vol1/1000/NVME/docker2/clouddrive2-19798/medata:/medata:rslave        
     environment:
       - TZ=Asia/Shanghai
       - DEBUG=false
