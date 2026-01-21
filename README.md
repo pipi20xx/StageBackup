@@ -1,5 +1,7 @@
 # StageBackup
 
+项目已经停更 功能已经迁移到 https://github.com/pipi20xx/EmbyLens
+
 🚀 **StageBackup** 是一款专为 Linux 环境设计的轻量级、高性能数据备份管理系统。它结合了 7-Zip 的高压缩比与 AES-256 的安全性，并针对挂载网盘（如 CloudDrive2/Rclone）进行了深度优化。
 
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
